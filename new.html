@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+    <title>Train Track Crack Checker</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -15,6 +15,7 @@
             justify-content: center;
             height: 100vh;
             background-color: #f4f4f9;
+            transition: background-color 0.3s ease;
         }
 
         h1 {
@@ -50,6 +51,14 @@
             background-color: #28a745;
         }
 
+        #alert-message {
+            font-size: 1.2rem;
+            color: #FF4C4C;
+            font-weight: bold;
+            display: none; /* Hidden by default */
+            margin-top: 20px;
+        }
+
         button {
             font-size: 1rem;
             padding: 10px 20px;
@@ -70,61 +79,54 @@
     <h1>Train Track Crack Checker</h1>
     <img id="train-track" src="check.jpg" alt="Train Track Image">
 
-<button type="button" onclick="init()">Start</button>
-<div id="webcam-container"></div>
-<div id="label-container"></div>
-<audio id="beep-sound" src="beep.mp3"></audio> <!-- Add a beep sound file here -->
-<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
-<script type="text/javascript">
-    // More API functions here:
-    // https://github.com/googlecreativelab/teachablemachine-community/tree/master/libraries/image
+    <button type="button" onclick="init()">Start</button>
+    <div id="webcam-container"></div>
+    <div id="label-container"></div>
+    <audio id="beep-sound" src="beep.mp3"></audio> <!-- Add a beep sound file here -->
+    <div id="alert-message">🚨 ALERT: Crack detected with high probability!</div>
 
-    // the link to your model provided by Teachable Machine export panel
-    const URL = "";
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
+    <script type="text/javascript">
+        const URL = ""; // Add your model URL here
 
-    let model, webcam, labelContainer, maxPredictions;
+        let model, webcam, labelContainer, maxPredictions;
 
-    // Load the image model and setup the webcam
-    async function init() {
+        async function init() {
+            const modelURL = URL + "model.json";
+            const metadataURL = URL + "metadata.json";
 
-        const modelURL = URL + "model.json";
-        const metadataURL = URL + "metadata.json";
+            document.getElementById("train-track").style.display = "none";
 
-        document.getElementById("train-track").style.display = "none";
+            // Load the model and metadata
+            model = await tmImage.load(modelURL, metadataURL);
+            maxPredictions = model.getTotalClasses();
 
-        // load the model and metadata
-        // Refer to tmImage.loadFromFiles() in the API to support files from a file picker
-        // or files from your local hard drive
-        // Note: the pose library adds "tmImage" object to your window (window.tmImage)
-        model = await tmImage.load(modelURL, metadataURL);
-        maxPredictions = model.getTotalClasses();
+            // Setup webcam
+            const flip = true; 
+            webcam = new tmImage.Webcam(200, 200, flip);
+            await webcam.setup(); 
+            await webcam.play();
+            window.requestAnimationFrame(loop);
 
-        // Convenience function to setup a webcam
-        const flip = true; // whether to flip the webcam
-        webcam = new tmImage.Webcam(200, 200, flip); // width, height, flip
-        await webcam.setup(); // request access to the webcam
-        await webcam.play();
-        window.requestAnimationFrame(loop);
-
-        // append elements to the DOM
-        document.getElementById("webcam-container").appendChild(webcam.canvas);
-        labelContainer = document.getElementById("label-container");
-        for (let i = 0; i < maxPredictions; i++) { // and class labels
-            labelContainer.appendChild(document.createElement("div"));
+            // Append webcam canvas
+            document.getElementById("webcam-container").appendChild(webcam.canvas);
+            labelContainer = document.getElementById("label-container");
+            for (let i = 0; i < maxPredictions; i++) {
+                labelContainer.appendChild(document.createElement("div"));
+            }
         }
-    }
 
-    async function loop() {
-        webcam.update(); // update the webcam frame
-        await predict();
-        window.requestAnimationFrame(loop);
-    }
+        async function loop() {
+            webcam.update(); 
+            await predict();
+            window.requestAnimationFrame(loop);
+        }
 
-    // run the webcam image through the image model
-    async function predict() {
+        async function predict() {
             try {
                 const beepSound = document.getElementById("beep-sound");
+                const alertMessage = document.getElementById("alert-message");
                 const prediction = await model.predict(webcam.canvas);
 
                 for (let i = 0; i < maxPredictions; i++) {
@@ -132,16 +134,27 @@
                         prediction[i].className + ": " + prediction[i].probability.toFixed(2);
                     labelContainer.childNodes[i].innerHTML = classPrediction;
 
-                    // Play beep sound if crack is detected
-                    if (prediction[i].className === "Crack" && prediction[i].probability > 0.8) {
+                    if (prediction[i].className === "Crack" && prediction[i].probability > 0.55) {
+                        // Display red alert
+                        alertMessage.style.display = "block";
+
+                        // Change background color briefly
+                        document.body.style.backgroundColor = "#FF4C4C";
+                        setTimeout(() => {
+                            document.body.style.backgroundColor = "#f4f4f9";
+                        }, 500);
+
+                        // Play beep sound
                         beepSound.play();
+                    } else if (prediction[i].className === "Clear") {
+                        // Hide alert if no crack detected
+                        alertMessage.style.display = "none";
                     }
                 }
             } catch (err) {
                 console.error("Prediction error:", err);
             }
         }
-</script>
-
+    </script>
 </body>
 </html>
