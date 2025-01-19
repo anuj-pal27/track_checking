@@ -104,6 +104,7 @@
 
             // Setup webcam
             const flip = true; 
+
             webcam = new tmImage.Webcam(200, 200, flip);
             await webcam.setup(); 
             await webcam.play();
@@ -129,23 +130,30 @@
                 const alertMessage = document.getElementById("alert-message");
                 const prediction = await model.predict(webcam.canvas);
 
+                    // Ensure beep sound is loaded and ready to play
+        if (beepSound.readyState >= 3) {
+            console.log("Beep sound is ready to play.");
+        }
+
                 for (let i = 0; i < maxPredictions; i++) {
                     const classPrediction =
                         prediction[i].className + ": " + prediction[i].probability.toFixed(2);
                     labelContainer.childNodes[i].innerHTML = classPrediction;
 
-                    if (prediction[i].className === "Crack" && prediction[i].probability > 0.55) {
+                    if (prediction[i].className === "crack" && prediction[i].probability > 0.85) {
                         // Display red alert
                         alertMessage.style.display = "block";
 
                         // Change background color briefly
                         document.body.style.backgroundColor = "#FF4C4C";
-                        setTimeout(() => {
+                        setTimeout(() => {  
                             document.body.style.backgroundColor = "#f4f4f9";
                         }, 500);
 
-                        // Play beep sound
-                        beepSound.play();
+                        // Play beep sound if it's ready
+                beepSound.play().catch((error) => {
+                    console.error("Error playing beep sound:", error);
+                });
                     } else if (prediction[i].className === "Clear") {
                         // Hide alert if no crack detected
                         alertMessage.style.display = "none";
